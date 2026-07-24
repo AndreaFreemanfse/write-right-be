@@ -85,3 +85,66 @@ Rules:
     data['original_text'] = text
 
     return data
+
+
+async def translate_word(
+    text,
+    source_language="english",
+    target_language="english",
+):
+    response = client.chat.completions.create(
+        model=os.getenv("MODEL"),
+        messages=[
+            {
+                "role": "system",
+                "content": f"""
+You are an expert multilingual dictionary.
+
+Translate the user's word or short phrase from
+{source_language} to {target_language}.
+
+Return ONLY valid JSON.
+
+The JSON must exactly match:
+
+{{
+    "translation": "translated word",
+    "part_of_speech": "noun",
+    "source_language": "{source_language}",
+    "target_language": "{target_language}"
+}}
+
+Rules:
+- Translate only.
+- Do not explain.
+- Do not include markdown.
+- Return only JSON.
+- "part_of_speech" should be one of:
+  noun
+  verb
+  adjective
+  adverb
+  pronoun
+  preposition
+  conjunction
+  interjection
+  article
+  phrase
+"""
+            },
+            {
+                "role": "user",
+                "content": text,
+            },
+        ],
+        extra_body={
+            "reasoning_split": True,
+        },
+    )
+
+    res = response.choices[0].message.content
+
+    try:
+        return json.loads(res)
+    except json.JSONDecodeError:
+        raise ValueError("AI returned invalid JSON")
