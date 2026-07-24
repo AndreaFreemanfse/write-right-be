@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from database import Base, engine
 import models
-from routes import journal, flashcards, flashcard_sets
+from routes import journal, flashcards, flashcard_sets, translate
 
 
 
@@ -17,13 +17,7 @@ Base.metadata.create_all(bind=engine)
 # CORS - # Allows React frontend (running on a different URL/port) to safely communicate with this FastAPI backend.
 origins = [
     "http://localhost:5173",  # Vite frontend
-    "http://localhost:5173/",
-    "http://localhost:5173/flashcards",
     "http://localhost:3000",
-    "http://localhost:5174",
-    "http://localhost:5174/"
-    "http://localhost:5174/flashcards"
-    
 ]
 
 app.add_middleware(
@@ -57,6 +51,12 @@ app.include_router(
     flashcard_sets.router,
     prefix="/flashcard-sets",
     tags=["Flashcard Sets"],
+)
+
+app.include_router(
+    translate.router,
+    prefix="/translate",
+    tags=["Translation"],
 )
 
 
