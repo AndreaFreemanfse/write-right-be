@@ -108,10 +108,12 @@ Return ONLY valid JSON.
 The JSON must exactly match:
 
 {{
-    "translation": "translated word",
+    "original_text": "The exact text entered by the user.",
+    "interpreted_text": "The correctly spelled source-language word or phrase.",
+    "translation": "The translated word.",
     "part_of_speech": "noun",
-    "source_language": "{source_language}",
-    "target_language": "{target_language}"
+    "source_language": "english",
+    "target_language": "german"
 }}
 
 Rules:
