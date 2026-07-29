@@ -18,9 +18,24 @@ class MistakeResponse(BaseModel):
     end: int | None = None
 
 
+class AccuracyCategories(BaseModel):
+    grammar: int = Field(ge=0, le=100)
+    vocabulary: int = Field(ge=0, le=100)
+    spelling: int = Field(ge=0, le=100)
+    sentenceStructure: int = Field(ge=0, le=100)
+
+
+class AccuracyResponse(BaseModel):
+    score: int = Field(ge=0, le=100)
+    summary: str
+    categories: AccuracyCategories
+    improvementNote: str
+
+
 class JournalAnalysisResponse(BaseModel):
     text: str
     mistakes: list[MistakeResponse]
+    accuracy: AccuracyResponse
 
 
 class JournalEntryResponse(BaseModel):
