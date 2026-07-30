@@ -8,6 +8,7 @@ from config import SUPABASE_JWKS_URL
 
 
 
+
 security = HTTPBearer()
 
 
