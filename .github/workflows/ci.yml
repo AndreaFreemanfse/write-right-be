@@ -14,7 +14,9 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://user:password@localhost:5432/write_right_test
-      AI_API_KEY: test-key
+      API_KEY: test-key
+      BASE_URL: https://api.openai.com/v1
+      MODEL: gpt-4o-mini
 
     steps:
       - name: Checkout repository
