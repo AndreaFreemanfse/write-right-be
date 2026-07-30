@@ -4,11 +4,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-AI_API_KEY = os.getenv("AI_API_KEY")
-AI_MODEL = os.getenv("AI_MODEL", "gpt-4o-mini")
+API_KEY = os.getenv("API_KEY")
+BASE_URL = os.getenv("BASE_URL")
+MODEL = os.getenv("MODEL")
 
 required = {
-    "DATABASE_URL": DATABASE_URL,   
+    "DATABASE_URL": DATABASE_URL,
+    "API_KEY": API_KEY,
+    "BASE_URL": BASE_URL,
+    "MODEL": MODEL,
 }
 
 missing = [name for name, value in required.items() if not value]
