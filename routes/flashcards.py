@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from auth import get_current_user
 
 from database import get_db
 from models import Flashcard, FlashcardSet
@@ -16,13 +17,18 @@ router = APIRouter()
 @router.post("", response_model=FlashcardResponse, status_code=201)
 def create_flashcard(
     data: FlashcardCreate,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    
 ):
     flashcard_set = (
-        db.query(FlashcardSet)
-        .filter(FlashcardSet.id == data.set_id)
-        .first()
+    db.query(FlashcardSet)
+    .filter(
+        FlashcardSet.id == data.set_id,
+        FlashcardSet.user_id == current_user["id"],
     )
+    .first()
+)
 
     if flashcard_set is None:
         raise HTTPException(
@@ -31,6 +37,7 @@ def create_flashcard(
         )
 
     flashcard = Flashcard(
+        user_id=current_user["id"],
         set_id=data.set_id,
         front=data.front,
         back=data.back,
@@ -46,12 +53,16 @@ def create_flashcard(
 @router.get("", response_model=list[FlashcardResponse])
 def get_flashcards(
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     return (
         db.query(Flashcard)
-        .order_by(Flashcard.created_at.desc())
-        .all()
+    .filter(
+        Flashcard.user_id == current_user["id"]
     )
+    .order_by(Flashcard.created_at.desc())
+    .all()
+)
 
 
 @router.patch("/{flashcard_id}", response_model=FlashcardResponse)
@@ -59,10 +70,14 @@ def update_flashcard(
     flashcard_id: int,
     data: FlashcardUpdate,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     flashcard = (
         db.query(Flashcard)
-        .filter(Flashcard.id == flashcard_id)
+        .filter(
+            Flashcard.id == flashcard_id,
+            FlashcardSet.user_id == current_user["id"],
+        )
         .first()
     )
 
@@ -87,10 +102,14 @@ def update_flashcard(
 def delete_flashcard(
     flashcard_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     flashcard = (
         db.query(Flashcard)
-        .filter(Flashcard.id == flashcard_id)
+        .filter(
+            Flashcard.id == flashcard_id,
+            FlashcardSet.user_id == current_user["id"],
+        )
         .first()
     )
 
