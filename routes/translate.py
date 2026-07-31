@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from services.ai_service import translate_word
-
+from auth import get_current_user
 
 router = APIRouter()
 
@@ -14,7 +14,7 @@ class TranslationRequest(BaseModel):
 
 
 @router.post("")
-async def translate(request: TranslationRequest):
+async def translate(request: TranslationRequest, current_user=Depends(get_current_user),):
     try:
         return await translate_word(
             text=request.text,
