@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from auth import get_current_user
 from database import get_db
 from models import Flashcard, FlashcardSet
 from schemas import FlashcardSetCreate, FlashcardSetResponse, FlashcardSetUpdate
@@ -11,10 +12,12 @@ router = APIRouter()
 @router.post("", response_model=FlashcardSetResponse, status_code=201)
 def create_flashcard_set(
     data: FlashcardSetCreate,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     flashcard_set = FlashcardSet(
         name=data.name,
+        user_id=current_user["id"],
         language=data.language,
         source_type=data.source_type,
         journal_entry_id=data.journal_entry_id,
@@ -39,9 +42,11 @@ def create_flashcard_set(
 @router.get("", response_model=list[FlashcardSetResponse])
 def get_flashcard_sets(
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     return (
         db.query(FlashcardSet)
+        .filter(FlashcardSet.user_id == current_user["id"],)
         .order_by(FlashcardSet.created_at.desc())
         .all()
     )
@@ -53,11 +58,14 @@ def get_flashcard_sets(
 )
 def get_flashcard_set(
     flashcard_set_id: int,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     flashcard_set = (
         db.query(FlashcardSet)
-        .filter(FlashcardSet.id == flashcard_set_id)
+        .filter(
+            FlashcardSet.id == flashcard_set_id, 
+            FlashcardSet.user_id == current_user["id"],)
         .first()
     )
 

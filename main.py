@@ -1,10 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from services.ai_service import correct_text
 from pydantic import BaseModel
 
 from database import Base, engine
-import models
+
 from routes import journal, flashcards, flashcard_sets, translate
 
 
@@ -64,3 +63,4 @@ app.include_router(
 @app.get("/")
 def read_root():
     return {"status": "success", "message": "FastAPI is initialized!"}
+
