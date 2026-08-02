@@ -45,6 +45,8 @@ async def analyze_journal(
     db.commit()
     db.refresh(journal_entry)
 
+    analysis["journal_entry_id"] = journal_entry.id
+
     return analysis
 
 
