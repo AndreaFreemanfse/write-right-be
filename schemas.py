@@ -36,6 +36,7 @@ class JournalAnalysisResponse(BaseModel):
     text: str
     mistakes: list[MistakeResponse]
     accuracy: AccuracyResponse
+    journal_entry_id: int
 
 
 class JournalEntryResponse(BaseModel):
@@ -105,3 +106,10 @@ class FlashcardSetResponse(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+
+class FlashcardSetSaveResponse(BaseModel):
+    flashcard_set: FlashcardSetResponse
+    created: bool
+    added_count: int
+    message: str
