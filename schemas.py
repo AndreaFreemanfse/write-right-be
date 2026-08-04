@@ -12,8 +12,11 @@ class JournalAnalysisRequest(BaseModel):
 class MistakeResponse(BaseModel):
     original: str
     corrected: str
-    explanation: str
-    category: str
+    original_full: str
+    corrected_full: str
+    loading: bool
+    explanation: str | None = None
+    category: str | None = None
     start: int | None = None
     end: int | None = None
 
