@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from services.ai_service import correct_text
 from pydantic import BaseModel
+import os
 
 from database import Base, engine
-import models
+
 from routes import journal, flashcards, flashcard_sets, translate, explanation
 
 
@@ -15,10 +15,15 @@ app = FastAPI()
 Base.metadata.create_all(bind=engine)
 
 # CORS - # Allows React frontend (running on a different URL/port) to safely communicate with this FastAPI backend.
+frontend_url = os.getenv("FRONTEND_URL")
+
 origins = [
-    "http://localhost:5173",  # Vite frontend
+    "http://localhost:5173",
     "http://localhost:3000",
 ]
+
+if frontend_url:
+    origins.append(frontend_url.rstrip("/"))
 
 app.add_middleware(
     CORSMiddleware,
@@ -70,3 +75,4 @@ app.include_router(
 @app.get("/")
 def read_root():
     return {"status": "success", "message": "FastAPI is initialized!"}
+

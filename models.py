@@ -10,6 +10,7 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -23,6 +24,11 @@ class Conversation(Base):
     __tablename__ = "conversations"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+    UUID(as_uuid=True),
+    nullable=False,
+    index=True,
+)
     title = Column(String, nullable=False, default="New Conversation")
     language = Column(String, nullable=False, default="German")
     created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
@@ -38,6 +44,11 @@ class Message(Base):
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+    UUID(as_uuid=True),
+    nullable=False,
+    index=True,
+)
     conversation_id = Column(
         Integer,
         ForeignKey("conversations.id", ondelete="CASCADE"),
@@ -58,6 +69,11 @@ class FlashcardSet(Base):
     __tablename__ = "flashcard_sets"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+    UUID(as_uuid=True),
+    nullable=False,
+    index=True,
+)
     name = Column(String, nullable=False)
     language = Column(String, nullable=False)
     source_type = Column(String, nullable=False)
@@ -76,6 +92,11 @@ class Flashcard(Base):
     __tablename__ = "flashcards"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+    UUID(as_uuid=True),
+    nullable=False,
+    index=True,
+)
 
     set_id = Column(
         Integer,
@@ -104,6 +125,11 @@ class JournalEntry(Base):
     __tablename__ = "journal_entries"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+    UUID(as_uuid=True),
+    nullable=False,
+    index=True,
+)
     original_text = Column(Text, nullable=False)
     corrected_text = Column(Text, nullable=False)
     mistakes = Column(JSON, nullable=False, default=list)
