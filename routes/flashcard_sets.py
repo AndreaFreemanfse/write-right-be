@@ -11,6 +11,7 @@ from schemas import (
     FlashcardSetSaveResponse,
     FlashcardSetUpdate,
 )
+from badge_service import evaluate_progress_badges
 
 router = APIRouter()
 
@@ -105,6 +106,10 @@ def create_flashcard_set(
 
     db.commit()
     db.refresh(flashcard_set)
+    evaluate_progress_badges(
+        user_id=current_user["id"],
+        db=db,
+    )
 
     if created:
         message = (
@@ -217,5 +222,6 @@ def update_flashcard_set(
 
     db.commit()
     db.refresh(flashcard_set)
+
 
     return flashcard_set

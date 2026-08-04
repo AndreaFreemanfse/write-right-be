@@ -9,6 +9,7 @@ from schemas import (
     FlashcardResponse,
     FlashcardUpdate
 )
+from badge_service import evaluate_progress_badges
 
 
 router = APIRouter()
@@ -25,7 +26,7 @@ def create_flashcard(
     db.query(FlashcardSet)
     .filter(
         FlashcardSet.id == data.set_id,
-        FlashcardSet.user_id == current_user["id"],
+        Flashcard.user_id == current_user["id"],
     )
     .first()
 )
@@ -47,6 +48,10 @@ def create_flashcard(
     db.add(flashcard)
     db.commit()
     db.refresh(flashcard)
+    evaluate_progress_badges(
+        user_id=current_user["id"],
+        db=db,
+    )
 
     return flashcard
 
@@ -76,7 +81,7 @@ def update_flashcard(
         db.query(Flashcard)
         .filter(
             Flashcard.id == flashcard_id,
-            FlashcardSet.user_id == current_user["id"],
+            Flashcard.user_id == current_user["id"],
         )
         .first()
     )
@@ -94,6 +99,10 @@ def update_flashcard(
 
     db.commit()
     db.refresh(flashcard)
+    evaluate_progress_badges(
+        user_id=current_user["id"],
+        db=db,
+    )
 
     return flashcard
 
@@ -108,7 +117,7 @@ def delete_flashcard(
         db.query(Flashcard)
         .filter(
             Flashcard.id == flashcard_id,
-            FlashcardSet.user_id == current_user["id"],
+            Flashcard.user_id == current_user["id"],
         )
         .first()
     )

@@ -5,7 +5,7 @@ import os
 
 from database import Base, engine
 
-from routes import journal, flashcards, flashcard_sets, translate, explanation
+from routes import journal, flashcards, flashcard_sets, translate, explanation, badges
 
 
 
@@ -71,6 +71,12 @@ app.include_router(
     explanation.router,
     prefix="/explanation",
     tags=["Explanation"],
+)
+
+app.include_router(
+    badges.router,
+    prefix="/badges",
+    tags=["Badges"],
 )
 
 

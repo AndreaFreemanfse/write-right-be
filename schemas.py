@@ -116,3 +116,25 @@ class FlashcardSetSaveResponse(BaseModel):
     created: bool
     added_count: int
     message: str
+
+
+class BadgeResponse(BaseModel):
+    id: int
+    key: str
+    name: str
+    description: str
+    icon: str
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
+class UserBadgeResponse(BaseModel):
+    id: int
+    earned_at: datetime
+    badge: BadgeResponse
+
+    model_config = {
+        "from_attributes": True,
+    }
