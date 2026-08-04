@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from database import Base, engine
 import models
-from routes import journal, flashcards, flashcard_sets, translate
+from routes import journal, flashcards, flashcard_sets, translate, explanation
 
 
 
@@ -57,6 +57,12 @@ app.include_router(
     translate.router,
     prefix="/translate",
     tags=["Translation"],
+)
+
+app.include_router(
+    explanation.router,
+    prefix="/explanation",
+    tags=["Explanation"],
 )
 
 
