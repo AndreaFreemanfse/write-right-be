@@ -20,6 +20,7 @@ frontend_url = os.getenv("FRONTEND_URL")
 origins = [
     "http://localhost:5173",
     "http://localhost:3000",
+    "https://write-right-fe-dad14.vercel.app/"
 ]
 
 if frontend_url:
