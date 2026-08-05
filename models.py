@@ -9,6 +9,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -137,4 +138,91 @@ class JournalEntry(Base):
         DateTime(timezone=True),
         nullable=False,
         default=utc_now,
+    )
+
+
+class Badge(Base):
+    __tablename__ = "badges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, nullable=False, unique=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    icon = Column(String, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
+    user_badges = relationship(
+        "UserBadge",
+        back_populates="badge",
+        cascade="all, delete-orphan",
+    )
+
+
+class UserBadge(Base):
+    __tablename__ = "user_badges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        UUID(as_uuid=True),
+        nullable=False,
+        index=True,
+    )
+    badge_id = Column(
+        Integer,
+        ForeignKey("badges.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    earned_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+
+    badge = relationship(
+        "Badge",
+        back_populates="user_badges",
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "badge_id",
+            name="uq_user_badge",
+        ),
+    )
+
+
+class UserActivity(Base):
+    __tablename__ = "user_activities"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(
+        UUID(as_uuid=True),
+        nullable=False,
+        index=True,
+    )
+
+    activity_type = Column(
+        String,
+        nullable=False,
+        index=True,
+    )
+
+    activity_data = Column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        index=True,
     )

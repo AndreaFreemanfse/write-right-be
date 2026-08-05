@@ -9,7 +9,8 @@ from schemas import (
 from sqlalchemy.orm import Session
 from auth import get_current_user
 from database import get_db
-from models import JournalEntry
+from models import JournalEntry, UserActivity
+from badge_service import evaluate_progress_badges
 
 router = APIRouter()
 
@@ -44,6 +45,24 @@ async def analyze_journal(
     db.add(journal_entry)
     db.commit()
     db.refresh(journal_entry)
+
+    activity = UserActivity(
+        user_id=current_user["id"],
+        activity_type="journal_analyzed",
+        activity_data={
+            "accuracy_score": analysis["accuracy"]["score"],
+            "target_language": target_language,
+        },
+    )
+
+    db.add(activity)
+    db.commit()
+    db.refresh(activity)
+
+    evaluate_progress_badges(
+        user_id=current_user["id"],
+        db=db,
+    )
 
     analysis["journal_entry_id"] = journal_entry.id
 
