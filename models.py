@@ -195,3 +195,34 @@ class UserBadge(Base):
             name="uq_user_badge",
         ),
     )
+
+
+class UserActivity(Base):
+    __tablename__ = "user_activities"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(
+        UUID(as_uuid=True),
+        nullable=False,
+        index=True,
+    )
+
+    activity_type = Column(
+        String,
+        nullable=False,
+        index=True,
+    )
+
+    activity_data = Column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        index=True,
+    )

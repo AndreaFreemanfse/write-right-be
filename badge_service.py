@@ -1,7 +1,7 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models import Badge, Flashcard, FlashcardSet, JournalEntry, UserBadge
+from models import Badge, Flashcard, FlashcardSet, JournalEntry, UserActivity, UserBadge
 
 
 BADGE_DEFINITIONS = [
@@ -170,6 +170,23 @@ def evaluate_progress_badges(
         or 0
     )
 
+    journal_activities = (
+        db.query(UserActivity)
+        .filter(
+            UserActivity.user_id == user_id,
+            UserActivity.activity_type == "journal_analyzed",
+        )
+        .all()
+    )
+
+    accuracy_scores = [
+        activity.activity_data.get("accuracy_score")
+        for activity in journal_activities
+        if activity.activity_data.get("accuracy_score") is not None
+    ]
+
+    highest_accuracy = max(accuracy_scores, default=0)
+
     badge_rules = [
         (journal_count >= 1, "first_steps"),
         (journal_count >= 5, "journal_explorer"),
@@ -177,6 +194,8 @@ def evaluate_progress_badges(
         (flashcard_set_count >= 6, "vault_builder"),
         (flashcard_count >= 25, "card_collector"),
         (mastered_count >= 10, "study_habit"),
+        (highest_accuracy >= 90, "high_accuracy"),
+        (highest_accuracy == 100, "perfect_journal"),
     ]
 
     for qualifies, badge_key in badge_rules:
