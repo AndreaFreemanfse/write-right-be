@@ -37,6 +37,7 @@ async def analyze_journal(
     journal_entry = JournalEntry(
         user_id=current_user["id"],
         original_text=text,
+        target_language=target_language,
         corrected_text=analysis["text"],
         mistakes=analysis["mistakes"],
     )

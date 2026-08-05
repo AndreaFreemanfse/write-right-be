@@ -133,6 +133,7 @@ class JournalEntry(Base):
     original_text = Column(Text, nullable=False)
     corrected_text = Column(Text, nullable=False)
     mistakes = Column(JSON, nullable=False, default=list)
+    target_language = Column(String, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,

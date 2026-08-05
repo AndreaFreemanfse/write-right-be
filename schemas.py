@@ -47,6 +47,7 @@ class JournalEntryResponse(BaseModel):
     original_text: str
     corrected_text: str
     mistakes: list[MistakeResponse]
+    target_language: str | None
     created_at: datetime
 
     model_config = {
