@@ -177,10 +177,14 @@ def get_flashcard_set(
 def delete_flashcard_set(
     flashcard_set_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     flashcard_set = (
         db.query(FlashcardSet)
-        .filter(FlashcardSet.id == flashcard_set_id)
+        .filter(
+            FlashcardSet.id == flashcard_set_id,
+            FlashcardSet.user_id == current_user["id"],
+        )
         .first()
     )
 
@@ -193,7 +197,6 @@ def delete_flashcard_set(
     db.delete(flashcard_set)
     db.commit()
 
-
 @router.patch(
     "/{flashcard_set_id}",
     response_model=FlashcardSetResponse,
@@ -202,10 +205,14 @@ def update_flashcard_set(
     flashcard_set_id: int,
     data: FlashcardSetUpdate,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     flashcard_set = (
         db.query(FlashcardSet)
-        .filter(FlashcardSet.id == flashcard_set_id)
+        .filter(
+            FlashcardSet.id == flashcard_set_id,
+            FlashcardSet.user_id == current_user["id"],
+        )
         .first()
     )
 
