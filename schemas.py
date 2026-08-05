@@ -12,9 +12,9 @@ class JournalAnalysisRequest(BaseModel):
 class MistakeResponse(BaseModel):
     original: str
     corrected: str
-    original_full: str
-    corrected_full: str
-    loading: bool
+    original_full: str | None = None
+    corrected_full: str | None = None
+    loading: bool = False
     explanation: str | None = None
     category: str | None = None
     start: int | None = None
@@ -35,11 +35,33 @@ class AccuracyResponse(BaseModel):
     improvementNote: str
 
 
+class BadgeResponse(BaseModel):
+    id: int
+    key: str
+    name: str
+    description: str
+    icon: str
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
+class UserBadgeResponse(BaseModel):
+    id: int
+    earned_at: datetime
+    badge: BadgeResponse
+
+    model_config = {
+        "from_attributes": True,
+    }
+
 class JournalAnalysisResponse(BaseModel):
     text: str
     mistakes: list[MistakeResponse]
     accuracy: AccuracyResponse
     journal_entry_id: int
+    new_badges: list[UserBadgeResponse] = Field(default_factory=list)
 
 
 class JournalEntryResponse(BaseModel):
@@ -116,25 +138,3 @@ class FlashcardSetSaveResponse(BaseModel):
     created: bool
     added_count: int
     message: str
-
-
-class BadgeResponse(BaseModel):
-    id: int
-    key: str
-    name: str
-    description: str
-    icon: str
-
-    model_config = {
-        "from_attributes": True,
-    }
-
-
-class UserBadgeResponse(BaseModel):
-    id: int
-    earned_at: datetime
-    badge: BadgeResponse
-
-    model_config = {
-        "from_attributes": True,
-    }
