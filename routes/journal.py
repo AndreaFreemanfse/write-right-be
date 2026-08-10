@@ -21,7 +21,7 @@ async def analyze_journal(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-
+    title = data.title
     text = data.text
     native_language = data.native_language
     target_language = data.target_language 
@@ -36,6 +36,7 @@ async def analyze_journal(
     )
 
     journal_entry = JournalEntry(
+        title=title,
         user_id=current_user["id"],
         original_text=text,
         target_language=target_language,
@@ -64,7 +65,8 @@ async def analyze_journal(
         user_id=current_user["id"],
         db=db,
     )
-
+    
+    analysis["title"] = title
     analysis["journal_entry_id"] = journal_entry.id
 
     return analysis
