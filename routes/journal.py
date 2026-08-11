@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from services.ai_service import correct_text
 from services.correction_service import add_indices
 from schemas import (
@@ -21,7 +21,7 @@ async def analyze_journal(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-
+    title = data.title
     text = data.text
     native_language = data.native_language
     target_language = data.target_language 
@@ -36,6 +36,7 @@ async def analyze_journal(
     )
 
     journal_entry = JournalEntry(
+        title=title,
         user_id=current_user["id"],
         original_text=text,
         target_language=target_language,
@@ -65,6 +66,7 @@ async def analyze_journal(
         db=db,
     )
 
+    analysis["title"] = title
     analysis["journal_entry_id"] = journal_entry.id
 
     return analysis
@@ -81,3 +83,29 @@ def get_journal_entries(
         .order_by(JournalEntry.created_at.desc())
         .all()
     )
+
+@router.delete("/{entry_id}")
+def delete_journal_entry(
+    entry_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    journal_entry = (
+        db.query(JournalEntry)
+        .filter(
+            JournalEntry.id == entry_id,
+            JournalEntry.user_id == current_user["id"],
+        )
+        .first()
+    )
+
+    if not journal_entry:
+        raise HTTPException(
+            status_code=404,
+            detail="Journal entry not found",
+        )
+
+    db.delete(journal_entry)
+    db.commit()
+
+    return {"message": "Journal entry deleted successfully"}

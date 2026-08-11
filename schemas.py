@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class JournalAnalysisRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
     text: str
     native_language: str
     target_language: str
@@ -57,6 +58,7 @@ class UserBadgeResponse(BaseModel):
     }
 
 class JournalAnalysisResponse(BaseModel):
+    title: str
     text: str
     mistakes: list[MistakeResponse]
     accuracy: AccuracyResponse
@@ -65,6 +67,7 @@ class JournalAnalysisResponse(BaseModel):
 
 
 class JournalEntryResponse(BaseModel):
+    title: str
     id: int
     original_text: str
     corrected_text: str

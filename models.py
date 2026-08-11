@@ -131,6 +131,7 @@ class JournalEntry(Base):
     nullable=False,
     index=True,
 )
+    title = Column(String(255), nullable=False)
     original_text = Column(Text, nullable=False)
     corrected_text = Column(Text, nullable=False)
     mistakes = Column(JSON, nullable=False, default=list)
