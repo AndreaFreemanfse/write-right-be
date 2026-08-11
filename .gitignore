@@ -12,3 +12,6 @@ venv/
 
 # VS Code
 .vscode/
+
+#Test db
+test.db
