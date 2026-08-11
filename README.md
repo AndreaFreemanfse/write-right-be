@@ -68,6 +68,11 @@ fastapi dev main.py
 
 ---
 
+### Additional Testing Commands
+```bash
+python -m pytest -q
+```
+
 ## 🎯 Project Goal
 
 WriteRight is designed to make language practice more effective by giving learners immediate, personalized feedback on their writing. Instead of only correcting mistakes, the app explains *why* changes were made so users can build lasting language skills.
