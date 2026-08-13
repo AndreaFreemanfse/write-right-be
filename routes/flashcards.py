@@ -26,7 +26,7 @@ def create_flashcard(
     db.query(FlashcardSet)
     .filter(
         FlashcardSet.id == data.set_id,
-        Flashcard.user_id == current_user["id"],
+        FlashcardSet.user_id == current_user["id"],
     )
     .first()
 )
