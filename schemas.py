@@ -106,6 +106,7 @@ class FlashcardResponse(BaseModel):
 
 
 class FlashcardSetCardCreate(BaseModel):
+    id: int | None = None
     front: str
     back: str
     language: str | None = None
