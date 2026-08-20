@@ -16,6 +16,9 @@ async def correct_text(text, native_language='English', target_language='English
 
     print("Calling AI model...")
 
+    if target_language == "":
+        target_language = 'English'
+
     print("Text received:", repr(text))
     print(f"Native language set to: {native_language}\nTarget language set to: {target_language}")
 
