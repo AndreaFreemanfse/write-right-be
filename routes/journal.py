@@ -84,6 +84,24 @@ def get_journal_entries(
         .all()
     )
 
+@router.get("/stats")
+def get_journal_stats(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    lifetime_journal_count = (
+        db.query(UserActivity)
+        .filter(
+            UserActivity.user_id == current_user["id"],
+            UserActivity.activity_type == "journal_analyzed",
+        )
+        .count()
+    )
+
+    return {
+        "lifetime_journal_count": lifetime_journal_count
+    }
+
 @router.delete("/{entry_id}")
 def delete_journal_entry(
     entry_id: int,

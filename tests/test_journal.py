@@ -215,3 +215,47 @@ def test_non_owner_cannot_delete_journal_entry(
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Journal entry not found"
+
+def test_lifetime_journal_count_does_not_decrease_when_entry_is_deleted(
+    client,
+    db_session,
+    test_user,
+):
+    first_entry = create_journal_entry(
+        db_session,
+        test_user["id"],
+        title="First Journal",
+    )
+
+    create_journal_entry(
+        db_session,
+        test_user["id"],
+        title="Second Journal",
+    )
+
+    db_session.add_all(
+        [
+            UserActivity(
+                user_id=test_user["id"],
+                activity_type="journal_analyzed",
+                activity_data={},
+            ),
+            UserActivity(
+                user_id=test_user["id"],
+                activity_type="journal_analyzed",
+                activity_data={},
+            ),
+        ]
+    )
+    db_session.commit()
+
+    delete_response = client.delete(
+        f"/journal/{first_entry.id}",
+    )
+
+    assert delete_response.status_code == 200
+
+    stats_response = client.get("/journal/stats")
+
+    assert stats_response.status_code == 200
+    assert stats_response.json()["lifetime_journal_count"] == 2
