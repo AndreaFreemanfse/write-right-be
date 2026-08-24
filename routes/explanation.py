@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from services.ai_service import generate_explanation
-
+import time
 
 router = APIRouter()
 
@@ -16,13 +16,16 @@ class ExplanationRequest(BaseModel):
 
 @router.post("")
 async def explain(request: ExplanationRequest):
+    start_time = time.time()
     try:
-        return await generate_explanation(
+        result = await generate_explanation(
             original=request.original,
             corrected=request.corrected,
             native_language=request.native_language,
             target_language=request.target_language,
         )
+        print(f"[TIMING] generate_explanation completed in {(time.time() - start_time) * 1000:.2f}ms")
+        return result
     except ValueError as error:
         raise HTTPException(
             status_code=502,
