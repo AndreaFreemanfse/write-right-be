@@ -5,6 +5,7 @@ from schemas import (
     JournalAnalysisRequest,
     JournalAnalysisResponse,
     JournalEntryResponse,
+    JournalEntryUpdate,
 )
 from sqlalchemy.orm import Session
 from auth import get_current_user
@@ -127,3 +128,50 @@ def delete_journal_entry(
     db.commit()
 
     return {"message": "Journal entry deleted successfully"}
+
+@router.put("/{entry_id}", response_model=JournalEntryResponse)
+async def update_journal_entry(
+    entry_id: int,
+    data: JournalEntryUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    journal_entry = (
+        db.query(JournalEntry)
+        .filter(
+            JournalEntry.id == entry_id,
+            JournalEntry.user_id == current_user["id"],
+        )
+        .first()
+    )
+
+    if not journal_entry:
+        raise HTTPException(
+            status_code=404,
+            detail="Journal entry not found",
+        )
+
+    # Re-analyze the edited writing
+    analysis = await correct_text(
+        data.original_text,
+        current_user.get("native_language", "English"),
+        data.target_language,
+    )
+
+    # Add indices for frontend highlighting
+    analysis = add_indices(
+        data.original_text,
+        analysis,
+    )
+
+    # Update the existing journal entry
+    journal_entry.title = data.title
+    journal_entry.original_text = data.original_text
+    journal_entry.target_language = data.target_language
+    journal_entry.corrected_text = analysis["text"]
+    journal_entry.mistakes = analysis["mistakes"]
+
+    db.commit()
+    db.refresh(journal_entry)
+
+    return journal_entry

@@ -78,6 +78,13 @@ class JournalEntryResponse(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+class JournalEntryUpdate(BaseModel):
+    title: str
+    original_text: str
+    native_language: str
+    target_language: str
+
 class FlashcardCreate(BaseModel):
     set_id: int
     front: str
