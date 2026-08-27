@@ -12,6 +12,7 @@ from auth import get_current_user
 from database import get_db
 from models import JournalEntry, UserActivity
 from badge_service import evaluate_progress_badges
+import time
 
 router = APIRouter()
 
@@ -22,14 +23,15 @@ async def analyze_journal(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    start_time = time.time()
     title = data.title
     text = data.text
     native_language = data.native_language
-    target_language = data.target_language 
+    target_language = data.target_language
 
     # AI anlysis of the text
     analysis = await correct_text(text, native_language, target_language)
-    
+
     #Backend adds start/end indices to each mistake for frontend highlighting
     analysis = add_indices(
         text,
@@ -70,6 +72,7 @@ async def analyze_journal(
     analysis["title"] = title
     analysis["journal_entry_id"] = journal_entry.id
 
+    print(f"[TIMING] journal_analyze completed in {(time.time() - start_time) * 1000:.2f}ms")
     return analysis
 
 
@@ -78,18 +81,22 @@ def get_journal_entries(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return (
+    start_time = time.time()
+    result = (
         db.query(JournalEntry)
         .filter(JournalEntry.user_id == current_user["id"])
         .order_by(JournalEntry.created_at.desc())
         .all()
     )
+    print(f"[TIMING] journal_get_entries completed in {(time.time() - start_time) * 1000:.2f}ms")
+    return result
 
 @router.get("/stats")
 def get_journal_stats(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    start_time = time.time()
     lifetime_journal_count = (
         db.query(UserActivity)
         .filter(
@@ -99,9 +106,9 @@ def get_journal_stats(
         .count()
     )
 
-    return {
-        "lifetime_journal_count": lifetime_journal_count
-    }
+    result = {"lifetime_journal_count": lifetime_journal_count}
+    print(f"[TIMING] journal_get_stats completed in {(time.time() - start_time) * 1000:.2f}ms")
+    return result
 
 @router.delete("/{entry_id}")
 def delete_journal_entry(
@@ -109,6 +116,7 @@ def delete_journal_entry(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    start_time = time.time()
     journal_entry = (
         db.query(JournalEntry)
         .filter(
@@ -127,6 +135,7 @@ def delete_journal_entry(
     db.delete(journal_entry)
     db.commit()
 
+    print(f"[TIMING] journal_delete_entry completed in {(time.time() - start_time) * 1000:.2f}ms")
     return {"message": "Journal entry deleted successfully"}
 
 @router.put("/{entry_id}", response_model=JournalEntryResponse)

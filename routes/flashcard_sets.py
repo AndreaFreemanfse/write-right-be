@@ -12,6 +12,7 @@ from schemas import (
     FlashcardSetUpdate,
 )
 from badge_service import evaluate_progress_badges
+import time
 
 router = APIRouter()
 
@@ -22,6 +23,7 @@ def create_flashcard_set(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    start_time = time.time()
     # Journal-generated sets must belong to a journal owned by this user.
     if data.journal_entry_id is not None:
         journal_entry = (
@@ -125,12 +127,14 @@ def create_flashcard_set(
     else:
         message = "No new flashcards were added because they already exist."
 
-    return {
+    result = {
         "flashcard_set": flashcard_set,
         "created": created,
         "added_count": added_count,
         "message": message,
     }
+    print(f"[TIMING] flashcard_sets_create completed in {(time.time() - start_time) * 1000:.2f}ms")
+    return result
 
 
 @router.get("", response_model=list[FlashcardSetResponse])
@@ -138,12 +142,15 @@ def get_flashcard_sets(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    return (
+    start_time = time.time()
+    result = (
         db.query(FlashcardSet)
         .filter(FlashcardSet.user_id == current_user["id"])
         .order_by(FlashcardSet.created_at.desc())
         .all()
     )
+    print(f"[TIMING] flashcard_sets_get_all completed in {(time.time() - start_time) * 1000:.2f}ms")
+    return result
 
 
 @router.get(
@@ -155,6 +162,7 @@ def get_flashcard_set(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    start_time = time.time()
     flashcard_set = (
         db.query(FlashcardSet)
         .filter(
@@ -170,6 +178,7 @@ def get_flashcard_set(
             detail="Flashcard set not found",
         )
 
+    print(f"[TIMING] flashcard_sets_get_one completed in {(time.time() - start_time) * 1000:.2f}ms")
     return flashcard_set
 
 
@@ -179,6 +188,7 @@ def delete_flashcard_set(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    start_time = time.time()
     flashcard_set = (
         db.query(FlashcardSet)
         .filter(
@@ -196,6 +206,7 @@ def delete_flashcard_set(
 
     db.delete(flashcard_set)
     db.commit()
+    print(f"[TIMING] flashcard_sets_delete completed in {(time.time() - start_time) * 1000:.2f}ms")
 
 @router.patch(
     "/{flashcard_set_id}",
@@ -207,6 +218,7 @@ def update_flashcard_set(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    start_time = time.time()
     flashcard_set = (
         db.query(FlashcardSet)
         .filter(
@@ -230,5 +242,5 @@ def update_flashcard_set(
     db.commit()
     db.refresh(flashcard_set)
 
-
+    print(f"[TIMING] flashcard_sets_update completed in {(time.time() - start_time) * 1000:.2f}ms")
     return flashcard_set

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
+import time
 
 from database import Base, engine
 
@@ -83,5 +84,8 @@ app.include_router(
 # Defines a root path GET endpoint
 @app.get("/")
 def read_root():
-    return {"status": "success", "message": "FastAPI is initialized!"}
+    start_time = time.time()
+    result = {"status": "success", "message": "FastAPI is initialized!"}
+    print(f"[TIMING] root_read completed in {(time.time() - start_time) * 1000:.2f}ms")
+    return result
 

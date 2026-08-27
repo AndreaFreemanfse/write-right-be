@@ -10,7 +10,7 @@ from schemas import (
     FlashcardUpdate
 )
 from badge_service import evaluate_progress_badges
-
+import time
 
 router = APIRouter()
 
@@ -20,8 +20,9 @@ def create_flashcard(
     data: FlashcardCreate,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
-    
+
 ):
+    start_time = time.time()
     flashcard_set = (
     db.query(FlashcardSet)
     .filter(
@@ -53,6 +54,7 @@ def create_flashcard(
         db=db,
     )
 
+    print(f"[TIMING] flashcards_create completed in {(time.time() - start_time) * 1000:.2f}ms")
     return flashcard
 
 @router.get("", response_model=list[FlashcardResponse])
@@ -60,7 +62,8 @@ def get_flashcards(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    return (
+    start_time = time.time()
+    result = (
         db.query(Flashcard)
     .filter(
         Flashcard.user_id == current_user["id"]
@@ -68,6 +71,8 @@ def get_flashcards(
     .order_by(Flashcard.created_at.desc())
     .all()
 )
+    print(f"[TIMING] flashcards_get_all completed in {(time.time() - start_time) * 1000:.2f}ms")
+    return result
 
 
 @router.patch("/{flashcard_id}", response_model=FlashcardResponse)
@@ -77,6 +82,7 @@ def update_flashcard(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    start_time = time.time()
     flashcard = (
         db.query(Flashcard)
         .filter(
@@ -104,6 +110,7 @@ def update_flashcard(
         db=db,
     )
 
+    print(f"[TIMING] flashcards_update completed in {(time.time() - start_time) * 1000:.2f}ms")
     return flashcard
 
 
@@ -113,6 +120,7 @@ def delete_flashcard(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    start_time = time.time()
     flashcard = (
         db.query(Flashcard)
         .filter(
@@ -130,3 +138,4 @@ def delete_flashcard(
 
     db.delete(flashcard)
     db.commit()
+    print(f"[TIMING] flashcards_delete completed in {(time.time() - start_time) * 1000:.2f}ms")
