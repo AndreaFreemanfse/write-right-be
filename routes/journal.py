@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from services.ai_service import correct_text
+from services.correction_service import correct_text
 from services.correction_service import add_indices
 from schemas import (
     JournalAnalysisRequest,

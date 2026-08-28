@@ -12,7 +12,7 @@ client = OpenAI(
 )
 
 
-async def correct_text(text, native_language='English', target_language='English'):
+async def ai_correct_text(text, native_language='English', target_language='English'):
 
     print("Calling AI model...")
 
