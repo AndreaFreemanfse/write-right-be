@@ -36,6 +36,40 @@ class AccuracyResponse(BaseModel):
     improvementNote: str
 
 
+
+class FillBlankQuest(BaseModel):
+    sentence: str
+    answer: str
+    hint: str
+    explanation: str
+
+
+class SpellingQuestItem(BaseModel):
+    word: str
+    clue: str
+
+
+class SpellingQuest(BaseModel):
+    items: list[SpellingQuestItem]
+
+
+class MatchingPair(BaseModel):
+    prompt: str
+    match: str
+
+
+class MatchingQuest(BaseModel):
+    pairs: list[MatchingPair]
+
+
+class QuestResponse(BaseModel):
+    target_language: str
+    focus_areas: list[str]
+    fill_blank: FillBlankQuest
+    spelling: SpellingQuest
+    matching: MatchingQuest
+
+
 class BadgeResponse(BaseModel):
     id: int
     key: str
