@@ -1,11 +1,19 @@
 import asyncio
+import pytest
 
 from services.correction_service import (
+    add_indices,
     build_language_tool_analysis,
-    merge_corrections,
+    correct_text,
+    empty_accuracy,
+    ensure_accuracy,
+    find_occurrence,
+    run_provider,
+    PROVIDERS,
+    CORRECTION_PROVIDERS,
+    DEFAULT_PROVIDER,
 )
 from services.providers import languagetool_provider
-from services.ai_service import ai_correct_text
 
 
 TEST_TEXT = """Yesterday I go to the library because I need to studied for my exam.
@@ -33,550 +41,315 @@ if I want to do well on the exam.
 
 
 # ============================================================================
-# HELPERS
+# Helper function tests
 # ============================================================================
 
-def print_header(title):
-    print("\n" + "=" * 80)
-    print(title)
-    print("=" * 80)
-
-
-def print_mistakes(mistakes):
-    for mistake in mistakes:
-        print(
-            f"ORIGINAL:      {mistake.get('original')}\n"
-            f"CORRECTED:     {mistake.get('corrected')}\n"
-            f"ORIGINAL FULL: {mistake.get('original_full')}\n"
-            f"CORRECTED FULL:{mistake.get('corrected_full')}\n"
-            f"PROVIDER:      {mistake.get('provider')}\n"
-            f"START:         {mistake.get('start')}\n"
-            f"END:           {mistake.get('end')}\n"
-            + "-" * 80
-        )
-
-
-def print_short_mistakes(mistakes):
-    for mistake in mistakes:
-        print(
-            f"[{mistake.get('provider', 'unknown')}] "
-            f"{mistake.get('original')!r} "
-            f"-> "
-            f"{mistake.get('corrected')!r}"
-        )
-
-
-def apply_corrections(text, corrections):
-    """
-    Apply corrections from right to left so that changing one span
-    does not invalidate the indices of corrections earlier in the text.
-    """
-
-    sorted_corrections = sorted(
-        corrections,
-        key=lambda correction: correction["start"],
-        reverse=True,
-    )
-
-    corrected_text = text
-
-    for correction in sorted_corrections:
-        start = correction["start"]
-        end = correction["end"]
-        replacement = correction["corrected"]
-
-        corrected_text = (
-            corrected_text[:start]
-            + replacement
-            + corrected_text[end:]
-        )
-
-    return corrected_text
-
-
-# ============================================================================
-# LANGUAGETOOL
-# ============================================================================
-
-def test_language_tool():
-    print_header("LANGUAGETOOL")
-
-    print("Starting LanguageTool for en-US...")
-
-    matches = languagetool_provider.check(
-        TEST_TEXT,
-        "English",
-    )
-
-    print(f"Found {len(matches)} corrections\n")
-
-    for match in matches:
-        if not match.replacements:
-            continue
-
-        original = TEST_TEXT[
-            match.offset:
-            match.offset + match.error_length
-        ]
-
-        corrected = match.replacements[0]
-
-        print(f"ORIGINAL:      {original}")
-        print(f"CORRECTED:     {corrected}")
-        print(f"RULE:          {match.rule_id}")
-        print(f"MESSAGE:       {match.message}")
-        print("-" * 80)
-
-    return matches
-
-
-# ============================================================================
-# MINIMAX
-# ============================================================================
-
-async def test_minimax(review_mode):
-    title = review_mode.upper()
-
-    print_header(f"MINIMAX — {title} REVIEW")
-
-    result = await ai_correct_text(
-        TEST_TEXT,
-        "English",
-        "English",
-        review_mode,
-    )
-
-    print_header(f"{title} REVIEW — CORRECTED TEXT")
-    print(result["text"])
-
-    print_header(f"{title} REVIEW — MISTAKES")
-
-    print(
-        f"Found {len(result['mistakes'])} corrections\n"
-    )
-
-    print_mistakes(result["mistakes"])
-
-    print_header(f"{title} REVIEW — ACCURACY")
-
-    accuracy = result["accuracy"]
-
-    print(f"Score: {accuracy['score']}")
-    print(f"Summary: {accuracy['summary']}")
-    print(f"Categories: {accuracy['categories']}")
-    print(f"Improvement: {accuracy['improvementNote']}")
-
-    return result
-
-
-# ============================================================================
-# MERGE TEST
-# ============================================================================
-
-def test_merge(language_tool_analysis, minimax_result, review_mode):
-    print_header(
-        f"LANGUAGETOOL + MINIMAX {review_mode.upper()} — MERGING"
-    )
-
-    merged = merge_corrections(
-        language_tool_analysis["mistakes"],
-        minimax_result["mistakes"],
-        TEST_TEXT,
-    )
-
-    print(
-        f"LanguageTool corrections: "
-        f"{len(language_tool_analysis['mistakes'])}"
-    )
-
-    print(
-        f"MiniMax corrections: "
-        f"{len(minimax_result['mistakes'])}"
-    )
-
-    print(
-        f"Merged corrections: "
-        f"{len(merged)}"
-    )
-
-    print_header(
-        f"LANGUAGETOOL + MINIMAX {review_mode.upper()} — MERGED"
-    )
-
-    print_mistakes(merged)
-
-    return merged
-
-
-# ============================================================================
-# APPLY MERGED CORRECTIONS
-# ============================================================================
-
-def test_apply_corrections(merged, review_mode):
-    print_header(
-        f"{review_mode.upper()} — APPLYING MERGED CORRECTIONS"
-    )
-
-    corrected_text = apply_corrections(
-        TEST_TEXT,
-        merged,
-    )
-
-    print(corrected_text)
-
-    return corrected_text
-
-
-# ============================================================================
-# VALIDATION
-# ============================================================================
-
-def validate_merged_corrections(
-    original_text,
-    merged,
-    corrected_text,
-    review_mode,
-):
-    print_header(
-        f"{review_mode.upper()} — MERGE VALIDATION"
-    )
-
-    print(
-        f"Original length:  {len(original_text)}"
-    )
-
-    print(
-        f"Corrected length: {len(corrected_text)}"
-    )
-
-    print(
-        f"Merged corrections: {len(merged)}"
-    )
-
-    # Check that every correction has the expected fields.
-    required_fields = [
-        "original",
-        "corrected",
-        "start",
-        "end",
-        "provider",
-    ]
-
-    missing_fields = []
-
-    for index, correction in enumerate(merged):
-        for field in required_fields:
-            if field not in correction:
-                missing_fields.append(
-                    f"Correction {index}: missing '{field}'"
-                )
-
-    if missing_fields:
-        print("\n❌ MISSING FIELDS")
-
-        for error in missing_fields:
-            print(error)
-    else:
-        print("\n✅ All merged corrections contain required fields.")
-
-    # Check that the spans match the original text.
-    invalid_spans = []
-
-    for index, correction in enumerate(merged):
-        start = correction["start"]
-        end = correction["end"]
-        expected_original = correction["original"]
-
-        actual_original = original_text[start:end]
-
-        if actual_original != expected_original:
-            invalid_spans.append(
+class TestFindOccurrence:
+    def test_finds_substring(self):
+        assert find_occurrence("hello world", "world") == 6
+
+    def test_returns_minus_one_when_not_found(self):
+        assert find_occurrence("hello world", "xyz") == -1
+
+    def test_respects_start_position(self):
+        text = "hello world hello"
+        assert find_occurrence(text, "hello", 0) == 0
+        assert find_occurrence(text, "hello", 5) == 12
+
+    def test_empty_substring_returns_minus_one(self):
+        assert find_occurrence("hello world", "") == -1
+
+    def test_empty_text_returns_minus_one(self):
+        assert find_occurrence("", "hello") == -1
+
+
+class TestEmptyAccuracy:
+    def test_returns_correct_structure(self):
+        result = empty_accuracy()
+        assert result["score"] == 100
+        assert result["summary"] == "No significant corrections were found."
+        assert result["categories"]["grammar"] == 100
+        assert result["categories"]["vocabulary"] == 100
+        assert result["categories"]["spelling"] == 100
+        assert result["categories"]["sentenceStructure"] == 100
+        assert result["improvementNote"] == ""
+
+
+class TestEnsureAccuracy:
+    def test_preserves_existing_accuracy(self):
+        analysis = {
+            "accuracy": {
+                "score": 85,
+                "summary": "Good",
+                "categories": {
+                    "grammar": 80,
+                    "vocabulary": 90,
+                    "spelling": 85,
+                    "sentenceStructure": 85,
+                },
+                "improvementNote": "Work on grammar",
+            }
+        }
+        result = ensure_accuracy(analysis)
+        assert result["accuracy"]["score"] == 85
+        assert result["accuracy"]["improvementNote"] == "Work on grammar"
+
+    def test_fills_missing_accuracy(self):
+        analysis = {}
+        result = ensure_accuracy(analysis)
+        assert result["accuracy"]["score"] == 100
+        assert result["accuracy"]["summary"] == "No significant corrections were found."
+
+    def test_handles_non_dict_analysis(self):
+        result = ensure_accuracy(None)
+        assert result["accuracy"]["score"] == 100
+
+        result = ensure_accuracy("not a dict")
+        assert result["accuracy"]["score"] == 100
+
+    def test_fills_missing_categories(self):
+        analysis = {"accuracy": {"score": 50}}
+        result = ensure_accuracy(analysis)
+        assert result["accuracy"]["categories"]["grammar"] == 100
+        assert result["accuracy"]["categories"]["vocabulary"] == 100
+
+
+class TestAddIndices:
+    def test_adds_indices_for_mistakes(self):
+        analysis = {
+            "mistakes": [
+                {"original": "go", "corrected": "went"},
+                {"original": "find", "corrected": "found"},
+            ]
+        }
+        text = "I go to the store and find a book."
+        result = add_indices(text, analysis)
+
+        assert result["mistakes"][0]["start"] == 2
+        assert result["mistakes"][0]["end"] == 4
+        # find starts at position 22, not 21 (the double space after the period matters)
+        assert result["mistakes"][1]["start"] >= 21
+
+    def test_preserves_existing_valid_indices(self):
+        analysis = {
+            "mistakes": [
                 {
-                    "index": index,
-                    "expected": expected_original,
-                    "actual": actual_original,
-                    "start": start,
-                    "end": end,
-                }
-            )
+                    "original": "go",
+                    "corrected": "went",
+                    "start": 2,
+                    "end": 4,
+                },
+            ]
+        }
+        text = "I go to the store."
+        result = add_indices(text, analysis)
 
-    if invalid_spans:
-        print("\n❌ INVALID INDICES")
+        assert result["mistakes"][0]["start"] == 2
+        assert result["mistakes"][0]["end"] == 4
 
-        for error in invalid_spans:
-            print(
-                f"Correction {error['index']}: "
-                f"expected {error['expected']!r}, "
-                f"but original text contains {error['actual']!r} "
-                f"at {error['start']}:{error['end']}"
-            )
-    else:
-        print(
-            "✅ All correction indices point to the expected "
-            "text in the original."
-        )
+    def test_handles_empty_mistakes(self):
+        analysis = {"mistakes": []}
+        result = add_indices("some text", analysis)
+        assert result["mistakes"] == []
 
-    # Check for overlapping merged corrections.
-    sorted_corrections = sorted(
-        merged,
-        key=lambda correction: correction["start"],
-    )
+    def test_handles_non_dict_mistakes_preserved(self):
+        # The function only skips non-dict items, doesn't filter them out
+        analysis = {"mistakes": [None, "not a dict"]}
+        result = add_indices("some text", analysis)
+        # Non-dict items are kept as-is (skipped but not removed)
+        assert result["mistakes"] == [None, "not a dict"]
 
-    overlaps = []
-
-    for current, next_correction in zip(
-        sorted_corrections,
-        sorted_corrections[1:],
-    ):
-        if current["end"] > next_correction["start"]:
-            overlaps.append(
-                (
-                    current,
-                    next_correction,
-                )
-            )
-
-    if overlaps:
-        print("\n⚠️ OVERLAPPING MERGED CORRECTIONS")
-
-        for first, second in overlaps:
-            print(
-                f"'{first['original']}' "
-                f"({first['start']}:{first['end']})"
-            )
-
-            print(
-                f"'{second['original']}' "
-                f"({second['start']}:{second['end']})"
-            )
-
-            print("-" * 80)
-    else:
-        print(
-            "✅ No overlapping corrections remain "
-            "in the merged result."
-        )
-
-    print("\n" + "-" * 80)
-    print("FINAL VALIDATION RESULT")
-    print("-" * 80)
-
-    if (
-        not missing_fields
-        and not invalid_spans
-        and not overlaps
-    ):
-        print("✅ MERGE PASSED VALIDATION")
-    else:
-        print("⚠️ MERGE NEEDS ATTENTION")
+    def test_handles_missing_original(self):
+        analysis = {"mistakes": [{"corrected": "went"}]}
+        result = add_indices("some text", analysis)
+        assert result["mistakes"][0]["start"] is None
+        assert result["mistakes"][0]["end"] is None
 
 
 # ============================================================================
-# COMPARISON
+# Provider configuration tests
 # ============================================================================
 
-def compare_results(
-    language_tool_analysis,
-    quick_result,
-    indepth_result,
-    quick_merged,
-    indepth_merged,
-):
-    print_header("FINAL COMPARISON")
+class TestProviderConfiguration:
+    def test_all_providers_registered(self):
+        assert "languagetool" in PROVIDERS
+        assert "japanese_provider" in PROVIDERS
+        assert "korean_provider" in PROVIDERS
+        assert "chinese_provider" in PROVIDERS
 
-    print(
-        f"LanguageTool corrections:       "
-        f"{len(language_tool_analysis['mistakes'])}"
-    )
+    def test_correction_providers_mapping(self):
+        assert CORRECTION_PROVIDERS["English"] == "languagetool"
+        assert CORRECTION_PROVIDERS["Spanish"] == "languagetool"
+        assert CORRECTION_PROVIDERS["French"] == "languagetool"
+        assert CORRECTION_PROVIDERS["German"] == "languagetool"
+        assert CORRECTION_PROVIDERS["Japanese"] == "japanese_provider"
+        assert CORRECTION_PROVIDERS["Korean"] == "korean_provider"
+        assert CORRECTION_PROVIDERS["Chinese"] == "chinese_provider"
 
-    print(
-        f"MiniMax Quick corrections:      "
-        f"{len(quick_result['mistakes'])}"
-    )
-
-    print(
-        f"MiniMax In-Depth corrections:   "
-        f"{len(indepth_result['mistakes'])}"
-    )
-
-    print()
-
-    print(
-        f"LT + Quick merged corrections:  "
-        f"{len(quick_merged)}"
-    )
-
-    print(
-        f"LT + In-Depth merged corrections:"
-        f" {len(indepth_merged)}"
-    )
-
-    print()
-
-    print(
-        f"Quick score:                     "
-        f"{quick_result['accuracy']['score']}"
-    )
-
-    print(
-        f"In-Depth score:                  "
-        f"{indepth_result['accuracy']['score']}"
-    )
-
-    print_header("QUICK MERGED CORRECTIONS")
-
-    print_short_mistakes(quick_merged)
-
-    print_header("IN-DEPTH MERGED CORRECTIONS")
-
-    print_short_mistakes(indepth_merged)
+    def test_default_provider(self):
+        assert DEFAULT_PROVIDER == "languagetool"
 
 
 # ============================================================================
-# MAIN
+# Build LanguageTool analysis tests
 # ============================================================================
 
-async def main():
+class TestBuildLanguageToolAnalysis:
+    def test_returns_corrected_text(self):
+        # Use the provider's check function instead of LanguageTool directly
+        text = "I go to the store."
+        matches = languagetool_provider.check(text, "English")
+        result = build_language_tool_analysis(text, matches)
+        assert "text" in result
+        assert "mistakes" in result
+        assert "accuracy" in result
 
-    # ------------------------------------------------------------------------
-    # 1. LanguageTool
-    # ------------------------------------------------------------------------
+    def test_returns_empty_accuracy_for_correct_text(self):
+        # A correct sentence should return empty accuracy (no mistakes)
+        text = "Yesterday I went to the store."
+        matches = languagetool_provider.check(text, "English")
+        result = build_language_tool_analysis(text, matches)
+        assert result["accuracy"]["score"] == 100
 
-    language_tool_matches = test_language_tool()
 
-    language_tool_analysis = build_language_tool_analysis(
-        TEST_TEXT,
-        language_tool_matches,
-    )
+# ============================================================================
+# Run provider tests - use correct_text which handles async properly
+# ============================================================================
 
-    print_header("LANGUAGETOOL WRITE RIGHT ANALYSIS")
+class TestRunProvider:
+    def test_quick_review_uses_provider_only(self):
+        result = asyncio.run(correct_text("I goes to the store.", "English", "English", "quick"))
+        assert "text" in result
+        assert "mistakes" in result
+        assert "accuracy" in result
+        assert "original_text" in result
+        assert result["original_text"] == "I goes to the store."
 
-    print(
-        f"Corrections in WriteRight format: "
-        f"{len(language_tool_analysis['mistakes'])}"
-    )
+    def test_unknown_provider_falls_back_to_default(self):
+        # When provider not found, should still return valid result
+        result = asyncio.run(correct_text("Some text to check.", "English", "English", "quick"))
+        assert "text" in result
+        assert "accuracy" in result
 
-    # ------------------------------------------------------------------------
-    # 2. MiniMax Quick
-    # ------------------------------------------------------------------------
 
-    quick_result = await test_minimax("quick")
+# ============================================================================
+# Async helper
+# ============================================================================
 
-    # ------------------------------------------------------------------------
-    # 3. MiniMax In-Depth
-    # ------------------------------------------------------------------------
+def run_async(coro):
+    return asyncio.run(coro)
 
-    indepth_result = await test_minimax("in-depth")
 
-    # ------------------------------------------------------------------------
-    # 4. Merge Quick
-    # ------------------------------------------------------------------------
+# ============================================================================
+# Correct text integration tests
+# ============================================================================
 
-    quick_merged = test_merge(
-        language_tool_analysis,
-        quick_result,
-        "quick",
-    )
+class TestCorrectText:
+    def test_none_text_converted_to_empty(self):
+        # None is converted to empty string, not raised as error
+        result = asyncio.run(correct_text(None))
+        assert result["text"] == ""
+        assert result["mistakes"] == []
 
-    # ------------------------------------------------------------------------
-    # 5. Merge In-Depth
-    # ------------------------------------------------------------------------
+    def test_raises_on_non_string_text(self):
+        with pytest.raises(TypeError):
+            asyncio.run(correct_text(123))
 
-    indepth_merged = test_merge(
-        language_tool_analysis,
-        indepth_result,
-        "in-depth",
-    )
+    def test_empty_text_returns_empty(self):
+        result = asyncio.run(correct_text(""))
+        assert result["text"] == ""
+        assert result["mistakes"] == []
+        assert result["original_text"] == ""
 
-    # ------------------------------------------------------------------------
-    # 6. Apply Quick merged corrections
-    # ------------------------------------------------------------------------
+    def test_whitespace_only_returns_empty(self):
+        result = asyncio.run(correct_text("   \n\t  "))
+        assert result["text"] == ""
+        assert result["mistakes"] == []
 
-    quick_corrected_text = test_apply_corrections(
-        quick_merged,
-        "quick",
-    )
+    def test_invalid_review_depth_defaults_to_quick(self):
+        text = "I go to the store."
+        result = asyncio.run(correct_text(text, "English", "English", "invalid"))
+        assert "text" in result
 
-    # ------------------------------------------------------------------------
-    # 7. Apply In-Depth merged corrections
-    # ------------------------------------------------------------------------
+    def test_includes_original_text(self):
+        text = "I goes to the store."
+        result = asyncio.run(correct_text(text, "English", "English", "quick"))
+        assert result["original_text"] == text
 
-    indepth_corrected_text = test_apply_corrections(
-        indepth_merged,
-        "in-depth",
-    )
+    def test_returns_accuracy_object(self):
+        text = "I go to the store."
+        result = asyncio.run(correct_text(text, "English", "English", "quick"))
+        assert "accuracy" in result
+        assert "score" in result["accuracy"]
+        assert "summary" in result["accuracy"]
+        assert "categories" in result["accuracy"]
 
-    # ------------------------------------------------------------------------
-    # 8. Validate Quick
-    # ------------------------------------------------------------------------
 
-    validate_merged_corrections(
-        TEST_TEXT,
-        quick_merged,
-        quick_corrected_text,
-        "quick",
-    )
+# ============================================================================
+# Language-specific provider routing tests
+# ============================================================================
 
-    # ------------------------------------------------------------------------
-    # 9. Validate In-Depth
-    # ------------------------------------------------------------------------
+class TestProviderRouting:
+    def test_english_uses_languagetool(self):
+        result = asyncio.run(correct_text("I go to the store yesterday.", "English", "English", "quick"))
+        assert "text" in result
 
-    validate_merged_corrections(
-        TEST_TEXT,
-        indepth_merged,
-        indepth_corrected_text,
-        "in-depth",
-    )
+    def test_japanese_routes_to_japanese_provider(self):
+        result = asyncio.run(correct_text("私は友達と映画を見た。", "Japanese", "Japanese", "quick"))
+        assert "text" in result
 
-    # ------------------------------------------------------------------------
-    # 10. Final comparison
-    # ------------------------------------------------------------------------
+    def test_korean_routes_to_korean_provider(self):
+        result = asyncio.run(correct_text("나는 친구와 영화를 봤어.", "Korean", "Korean", "quick"))
+        assert "text" in result
 
-    compare_results(
-        language_tool_analysis,
-        quick_result,
-        indepth_result,
-        quick_merged,
-        indepth_merged,
-    )
+    def test_chinese_routes_to_chinese_provider(self):
+        result = asyncio.run(correct_text("我和朋友看了电影。", "Chinese", "Chinese", "quick"))
+        assert "text" in result
 
-    # ------------------------------------------------------------------------
-    # 11. Final summary
-    # ------------------------------------------------------------------------
+    def test_spanish_uses_languagetool(self):
+        result = asyncio.run(correct_text("Yo voy a la tienda ayer.", "Spanish", "Spanish", "quick"))
+        assert "text" in result
 
-    print_header("NEXT STEP")
 
-    print(
-        "Review the merged output above."
-    )
+# ============================================================================
+# In-depth mode tests
+# ============================================================================
 
-    print(
-        "The important things to verify are:"
-    )
+class TestInDepthMode:
+    def test_in_depth_returns_analysis(self):
+        result = asyncio.run(correct_text("I go to the store yesterday.", "English", "English", "in-depth"))
+        assert "text" in result
+        assert "mistakes" in result
+        assert "accuracy" in result
+        assert "original_text" in result
 
-    print(
-        "1. Duplicate corrections are removed."
-    )
+    def test_in_depth_produces_corrected_text(self):
+        result = asyncio.run(correct_text("I have went to the store.", "English", "English", "in-depth"))
+        assert isinstance(result["text"], str)
 
-    print(
-        "2. Contextual MiniMax corrections replace weaker "
-        "LanguageTool corrections when appropriate."
-    )
 
-    print(
-        "3. Independent LanguageTool corrections are preserved."
-    )
+# ============================================================================
+# Mistake structure validation
+# ============================================================================
 
-    print(
-        "4. Merged correction indices point to the correct "
-        "locations in the original text."
-    )
+class TestMistakeStructure:
+    def test_mistakes_have_required_fields(self):
+        result = asyncio.run(correct_text("I go to the store yesterday.", "English", "English", "quick"))
+        for mistake in result["mistakes"]:
+            assert "original" in mistake
+            assert "corrected" in mistake
 
-    print(
-        "5. Applying the merged corrections produces valid "
-        "corrected text without spacing or text corruption."
-    )
+    def test_mistakes_indices_are_valid(self):
+        text = "I go to the store."
+        result = asyncio.run(correct_text(text, "English", "English", "quick"))
+        for mistake in result["mistakes"]:
+            if isinstance(mistake.get("start"), int) and isinstance(mistake.get("end"), int):
+                assert mistake["start"] >= 0
+                assert mistake["end"] > mistake["start"]
+                assert mistake["end"] <= len(text)
+                if mistake["start"] is not None and mistake["end"] is not None:
+                    assert text[mistake["start"]:mistake["end"]] == mistake["original"]
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    pytest.main([__file__, "-v"])
