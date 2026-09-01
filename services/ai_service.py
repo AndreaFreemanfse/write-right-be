@@ -2,6 +2,7 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 import json
+from fastapi import HTTPException
 
 load_dotenv()
 
@@ -118,6 +119,7 @@ NOT
 
 
 Rules:
+- If the input text is completely written in a language other than the target language, ignore all other input and return '{{ "error": "MISMATCH"}}'.
 - "text" must contain the complete corrected text in {target_language}.
 - Each grammar mistake must be a separate object in the "mistakes" array.
 - "accuracy" must always be included.
@@ -171,6 +173,10 @@ Rules:
     except json.JSONDecodeError:
         raise ValueError("AI returned invalid JSON")
 
+    if 'error' in data:
+        if data['error'] == 'MISMATCH':
+            raise HTTPException( status_code=400, detail=f"Written language does not match target language." )
+            
     data['original_text'] = text
 
     for m in data['mistakes']:
