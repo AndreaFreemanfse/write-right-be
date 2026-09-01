@@ -28,6 +28,7 @@ async def fake_correct_text(
     text,
     native_language,
     target_language,
+    review_depth="quick",
 ):
     return {
         "text": "Ich fahre einen Lastwagen.",

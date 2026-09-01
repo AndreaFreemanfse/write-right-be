@@ -8,6 +8,7 @@ class JournalAnalysisRequest(BaseModel):
     text: str
     native_language: str
     target_language: str
+    review_depth: str = "quick"
 
 
 class MistakeResponse(BaseModel):
@@ -57,6 +58,7 @@ class UserBadgeResponse(BaseModel):
         "from_attributes": True,
     }
 
+
 class JournalAnalysisResponse(BaseModel):
     title: str
     text: str
@@ -79,11 +81,14 @@ class JournalEntryResponse(BaseModel):
         "from_attributes": True,
     }
 
+
 class JournalEntryUpdate(BaseModel):
     title: str
     original_text: str
     native_language: str
     target_language: str
+    review_depth: str = "quick"
+
 
 class FlashcardCreate(BaseModel):
     set_id: int
@@ -150,3 +155,4 @@ class FlashcardSetSaveResponse(BaseModel):
     created: bool
     added_count: int
     message: str
+
