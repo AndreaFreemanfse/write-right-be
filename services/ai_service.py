@@ -1,9 +1,8 @@
 import json
 import os
-
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-
+from fastapi import HTTPException
 
 load_dotenv()
 
@@ -114,6 +113,31 @@ Use exactly this structure:
 Rules:
 
 - Return only JSON.
+- Each grammar mistake must be a separate object in the "mistakes" array.
+- "accuracy" must always be included.
+- "score" must be an integer from 0 to 100 representing the learner's overall writing proficiency and ability to communicate effectively.
+- Use this scoring guide:
+  - 90-100: Nearly error-free, clear, and natural.
+  - 80-89: Clear and effective with only minor mistakes.
+  - 70-79: Several noticeable mistakes, but the meaning remains clear.
+  - 60-69: Frequent mistakes, but most of the text is still understandable.
+  - 50-59: Many significant mistakes that sometimes interfere with understanding.
+  - Below 50: The text is consistently difficult to understand.
+- A few grammar mistakes should not dramatically reduce the score if the meaning remains clear.
+- Consider overall communication, clarity, vocabulary, grammar, and fluency together rather than simply counting mistakes.
+- Reserve scores below 50 for writing that is genuinely difficult to understand because of frequent or severe errors.
+- Category scores should reflect the learner's overall proficiency in that area rather than the percentage of words that were incorrect.
+- "categories" must include integer scores from 0 to 100 for grammar, vocabulary, spelling, and sentenceStructure.
+- "improvementNote" must be one concise sentence in {native_language} describing the single most important area for improvement.
+- "original" must contain ONLY the smallest incorrect word or phrase that requires correction in the {target_language}. Never return an entire sentence unless the entire sentence itself is the mistake. It must never contain '**' marks.
+- "corrected" must contain ONLY the replacement for the incorrect word or phrase in {target_language}. It must correspond exactly to "original" and never contain surrounding words that were already correct. It must never contain '**' marks.
+- "corrected_full" must only contain words from the corrected version of the text. The corrected word from the 'corrected' field must have '**' directly on both sides of the word.
+- "original_full" must exactly match 'corrected_full' except for the word inside the '**' marks.
+- Preserve the language of the user's original text.
+- Keep both "original" and "corrected" as short as possible while preserving the grammatical correction.
+- If the input text is completely written in a language other than the target language, ignore all other input and return '{{ "error": "MISMATCH"}}'.
+- "text" must contain the complete corrected text in {target_language}.
+- "summary" must be one concise sentence written in {native_language}.
 - Do not translate the text.
 - Preserve the language of the user's original text.
 - Do not unnecessarily change correct text.
@@ -148,6 +172,23 @@ Rules:
     print("AI model finished")
 
     data = _parse_json_response(response)
+
+# Handle cases where the AI returns invalid JSON by raising a ValueError with a descriptive message.
+    try:
+        data = json.loads(res)
+    except json.JSONDecodeError:
+        raise ValueError("AI returned invalid JSON")
+
+    if 'error' in data:
+        if data['error'] == 'MISMATCH':
+            raise HTTPException( status_code=400, detail=f"Written language does not match target language." )
+            
+    data['original_text'] = text
+
+    for m in data['mistakes']:
+        m['explanation'] = None
+        m['category'] = None
+        m['loading'] = False
 
     return _add_mistake_defaults(data, text)
 
