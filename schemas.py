@@ -37,9 +37,11 @@ class AccuracyResponse(BaseModel):
 
 
 
-class FillBlankQuest(BaseModel):
+class SpotMistakeQuest(BaseModel):
     sentence: str
-    answer: str
+    incorrect: str
+    corrected: str
+    corrected_sentence: str | None = None
     hint: str
     explanation: str
 
@@ -65,7 +67,7 @@ class MatchingQuest(BaseModel):
 class QuestResponse(BaseModel):
     target_language: str
     focus_areas: list[str]
-    fill_blank: FillBlankQuest
+    spot_mistake: SpotMistakeQuest
     spelling: SpellingQuest
     matching: MatchingQuest
 

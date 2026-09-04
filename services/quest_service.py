@@ -37,41 +37,34 @@ def get_quest_mistake_history(
     return mistakes
 
 
-def make_fill_blank(mistake):
+def make_spot_mistake(mistake):
+    original = mistake.get("original")
     corrected = mistake.get("corrected")
+    original_full = mistake.get("original_full")
     corrected_full = mistake.get("corrected_full")
     explanation = mistake.get("explanation")
 
-    if not corrected:
+    if not original or not corrected:
         return None
 
-    if corrected_full:
-        marked_answer = f"**{corrected}**"
+    if not original_full:
+        return None
 
-        if marked_answer in corrected_full:
-            sentence = corrected_full.replace(
-                marked_answer,
-                "___",
-                1,
-            )
-        else:
-            sentence = corrected_full.replace(
-                corrected,
-                "___",
-                1,
-            )
-
-        sentence = sentence.replace("**", "")
-    else:
-        sentence = "___"
+    sentence = original_full.replace("**", "")
 
     return {
         "sentence": sentence,
-        "answer": corrected,
-        "hint": "Use the correction from one of your previous journal mistakes.",
+        "incorrect": original,
+        "corrected": corrected,
+        "corrected_sentence": (
+            corrected_full.replace("**", "")
+            if corrected_full
+            else None
+        ),
+        "hint": "Click the part of the sentence that contains the mistake.",
         "explanation": (
             explanation
-            or f'The correct form is "{corrected}".'
+            or f'The incorrect form "{original}" should be "{corrected}".'
         ),
     }
 
@@ -113,7 +106,7 @@ async def create_personalized_quests(
     if not mistakes:
         return None
 
-    fill_blank = make_fill_blank(mistakes[0])
+    spot_mistake = make_spot_mistake(mistakes[0])
 
     spelling_candidates = [
         mistake
@@ -189,7 +182,7 @@ async def create_personalized_quests(
     quest_data = {
         "target_language": target_language,
         "focus_areas": focus_areas[:3],
-        "fill_blank": fill_blank,
+        "spot_mistake": spot_mistake,
         "spelling": {
             "items": spelling_items,
         },
