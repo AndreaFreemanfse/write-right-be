@@ -15,11 +15,13 @@ router = APIRouter(
 
 @router.post("/generate", response_model=QuestResponse)
 async def generate_personalized_quests(
+    target_language: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     quests = await create_personalized_quests(
         user_id=current_user["id"],
+        target_language=target_language,
         db=db,
     )
 

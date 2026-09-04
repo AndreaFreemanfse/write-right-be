@@ -87,6 +87,7 @@ def usable_mistakes(mistakes):
 
 async def create_personalized_quests(
     user_id: str,
+    target_language: str,
     db: Session,
 ):
     mistakes = get_quest_mistake_history(
@@ -99,25 +100,18 @@ async def create_personalized_quests(
     if not mistakes:
         return None
 
-    target_language = next(
-        (
-            mistake["target_language"]
-            for mistake in mistakes
-            if mistake.get("target_language")
-        ),
-        "English",
+    mistakes = [
+    mistake
+    for mistake in mistakes
+    if (
+        mistake.get("target_language")
+        and mistake["target_language"].lower()
+        == target_language.lower()
     )
+]
 
-    # Prefer mistakes from the language currently represented
-    # by the learner's most recent useful mistake.
-    language_mistakes = [
-        mistake
-        for mistake in mistakes
-        if mistake.get("target_language") == target_language
-    ]
-
-    if language_mistakes:
-        mistakes = language_mistakes
+    if not mistakes:
+        return None
 
     fill_blank = make_fill_blank(mistakes[0])
 
