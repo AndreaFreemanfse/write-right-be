@@ -322,3 +322,88 @@ Corrected:
         raise ValueError("AI returned invalid JSON")
 
     return data
+
+async def generate_quests(mistakes, target_language):
+    print("Generating personalized quests...")
+
+    response = client.chat.completions.create(
+        model=os.getenv("MODEL"),
+        messages=[
+            {
+                "role": "system",
+                "content": f"""
+You are a multilingual language tutor creating personalized practice
+activities for a student learning {target_language}.
+
+You will receive a JSON list of mistakes from the student's previous
+journal entries.
+
+Analyze the mistakes for recurring patterns and create three short
+practice quests that specifically target the student's weaknesses.
+
+Return ONLY valid JSON using exactly this structure:
+
+{{
+    "target_language": "{target_language}",
+    "focus_areas": [
+        "A concise description of a recurring weakness"
+    ],
+    "fill_blank": {{
+        "sentence": "A sentence in {target_language} containing ___ for the missing answer.",
+        "answer": "The exact text that belongs in the blank.",
+        "hint": "A short helpful hint.",
+        "explanation": "A concise explanation of why the answer is correct."
+    }},
+    "spelling": {{
+        "items": [
+            {{
+                "word": "A word the learner should practice spelling.",
+                "clue": "A short clue that does not reveal the spelling."
+            }}
+        ]
+    }},
+    "matching": {{
+        "pairs": [
+            {{
+                "prompt": "An incorrect form, concept, or clue.",
+                "match": "Its correct corresponding form."
+            }}
+        ]
+    }}
+}}
+
+Rules:
+- Base the quests on the student's supplied mistake history.
+- Prioritize mistakes that recur or represent similar patterns.
+- Use the original and corrected text to infer weaknesses when category
+  or explanation is missing.
+- Keep exercises appropriate for a language learner.
+- The fill-in-the-blank sentence must contain exactly one ___.
+- Provide 3 spelling items.
+- Provide 4 matching pairs.
+- Matching pairs must have one unambiguous match each.
+- Do not simply copy the same exercise into all three quests.
+- Do not include markdown.
+- Do not include code fences.
+- Do not include any text before or after the JSON object.
+""",
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    mistakes,
+                    ensure_ascii=False,
+                ),
+            },
+        ],
+        extra_body={
+            "reasoning_split": True,
+        },
+    )
+
+    res = response.choices[0].message.content
+
+    try:
+        return json.loads(res)
+    except json.JSONDecodeError:
+        raise ValueError("AI returned invalid quest JSON")
