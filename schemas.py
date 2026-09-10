@@ -36,6 +36,42 @@ class AccuracyResponse(BaseModel):
     improvementNote: str
 
 
+
+class SpotMistakeQuest(BaseModel):
+    sentence: str
+    incorrect: str
+    corrected: str
+    corrected_sentence: str | None = None
+    hint: str
+    explanation: str
+
+
+class SpellingQuestItem(BaseModel):
+    word: str
+    clue: str
+
+
+class SpellingQuest(BaseModel):
+    items: list[SpellingQuestItem]
+
+
+class MatchingPair(BaseModel):
+    prompt: str
+    match: str
+
+
+class MatchingQuest(BaseModel):
+    pairs: list[MatchingPair]
+
+
+class QuestResponse(BaseModel):
+    target_language: str
+    focus_areas: list[str]
+    spot_mistake: SpotMistakeQuest
+    spelling: SpellingQuest
+    matching: MatchingQuest
+
+
 class BadgeResponse(BaseModel):
     id: int
     key: str
