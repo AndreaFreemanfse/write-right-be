@@ -53,12 +53,14 @@ source .venv/bin/activate
 ```powershell
 .venv\Scripts\Activate.ps1
 ```
+#### * Use Python 3.14.2
 
 ### Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
+#### Note: uvloop==0.22.1 may cause dependencies to fail. Windows users may instead use winloop==0.22.1
 
 ### Start the backend server
 
