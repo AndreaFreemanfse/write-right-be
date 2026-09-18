@@ -28,8 +28,21 @@ async def analyze_journal(
     target_language = data.target_language 
 
     # AI anlysis of the text
-    analysis = await correct_text(text, native_language, target_language)
-    
+    try:
+        analysis = await correct_text(text, native_language, target_language)
+    except HTTPException:
+        raise
+    except ValueError as error:
+        raise HTTPException(
+            status_code=502,
+            detail=str(error),
+        ) from error
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail="The journal analysis could not be completed.",
+        ) from error
+
     #Backend adds start/end indices to each mistake for frontend highlighting
     analysis = add_indices(
         text,
@@ -152,11 +165,24 @@ async def update_journal_entry(
         )
 
     # Re-analyze the edited writing
-    analysis = await correct_text(
-        data.original_text,
-        current_user.get("native_language", "English"),
-        data.target_language,
-    )
+    try:
+        analysis = await correct_text(
+            data.original_text,
+            data.native_language,
+            data.target_language,
+        )
+    except HTTPException:
+        raise
+    except ValueError as error:
+        raise HTTPException(
+            status_code=502,
+            detail=str(error),
+        ) from error
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail="The journal analysis could not be completed.",
+        ) from error
 
     # Add indices for frontend highlighting
     analysis = add_indices(
